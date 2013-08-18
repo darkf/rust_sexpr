@@ -1,5 +1,3 @@
-use std::io;
-
 #[deriving(Eq)]
 enum Value {
 	List(~[Value]),
@@ -56,7 +54,7 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 		'(' => read_list(input, start+1),
 		')' => None,
 		c if c.is_digit() || c == '.' => read_number(input, start),
-		c => read_atom(input, start)
+		_ => read_atom(input, start)
 	}
 }
 
@@ -73,7 +71,7 @@ fn parse(input: &str) -> Option<Value> {
 }
 
 #[test]
-fn test_sexp() {
+fn test_sexpr() {
 	assert_eq!(parse(""), None);
 	assert_eq!(parse("123"), Some(Num(123.0)));
 	assert_eq!(parse("()"), Some(List(~[])));
