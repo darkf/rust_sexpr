@@ -47,7 +47,7 @@ fn read_atom(input: &str, start: uint) -> Option<(~Value, uint)> {
 }
 
 fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
-	if(start >= input.len() || input.is_whitespace() || input.slice(start, input.len()).is_whitespace()) {
+	if(start >= input.len()) {
 		return None
 	}
 
