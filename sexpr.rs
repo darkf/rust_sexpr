@@ -9,25 +9,15 @@ enum Value {
 }
 
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
-	let mut pos = 0;
-	for (i,c) in input.iter().enumerate().skip(start) {
-		if(c == ' ' || c == ')') {
-			pos = i;
-		}
-		else if(i == input.len()-1) {
-			pos = i+1;
-		}
-	}
-
-	if(pos == 0) {
-		None
-	}
-	else {
-		let acc = input.slice(start, pos);
-		match std::float::from_str(acc) {
-			Some(f) => return Some((~Num(f), pos)),
-			None => return None
-		}
+	let end = input.iter().skip(start).position(|c| c == ' ' || c == ')');
+	let pos = match end {
+		Some(end) => end+1,
+		None => input.len()
+	};
+	let acc = input.slice(start, pos);
+	match std::float::from_str(acc) {
+		Some(f) => Some((~Num(f), pos)),
+		None => None
 	}
 }
 
