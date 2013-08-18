@@ -9,17 +9,26 @@ enum Value {
 }
 
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
+	let mut pos = 0;
 	for (i,c) in input.iter().enumerate().skip(start) {
-		if c == ' ' || i == input.len()-1 {
-			let acc = input.slice(start, i+1);
-			match std::float::from_str(acc) {
-				Some(f) => return Some((~Num(f), i)),
-				None => return None
-			}
+		if(c == ' ' || c == ')') {
+			pos = i;
+		}
+		else if(i == input.len()-1) {
+			pos = i+1;
 		}
 	}
 
-	None
+	if(pos == 0) {
+		None
+	}
+	else {
+		let acc = input.slice(start, pos);
+		match std::float::from_str(acc) {
+			Some(f) => return Some((~Num(f), pos)),
+			None => return None
+		}
+	}
 }
 
 fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
@@ -80,6 +89,7 @@ fn test_sexp() {
 	assert_eq!(parse("()"), Some(List(~[])));
 	assert_eq!(parse("3.14159265358"), Some(Num(3.14159265358)));
 	assert_eq!(parse("(hi)"), Some(List(~[Atom(~"hi")])));
+	assert_eq!(parse("(1)"), Some(List(~[Num(1.0)])));
 	assert_eq!(parse("(hi there)"), Some(List(~[Atom(~"hi"), Atom(~"there")])));
 	assert_eq!(parse("(hi (there))"), Some(List(~[Atom(~"hi"), List(~[Atom(~"there")])])));
 }
