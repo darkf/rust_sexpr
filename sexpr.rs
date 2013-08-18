@@ -63,10 +63,7 @@ fn parse(input: &str) -> Option<Value> {
 		List(~[])
 	}*/
 	match read_value(input, 0) {
-		Some((v,_)) => {
-			println(fmt!("v: %?", *v));
-			Some(*v)
-		}
+		Some((v,_)) => Some(*v),
 		None => None
 	}
 }
