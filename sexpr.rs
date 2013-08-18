@@ -31,7 +31,7 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 				list.push(*v);
 				i = new_i;
 			}
-			None if input[start] as char == ')' => return Some((~List(list), i)),
+			None if input[i] as char == ')' => return Some((~List(list), i)),
 			None => return None
 		}
 	}
