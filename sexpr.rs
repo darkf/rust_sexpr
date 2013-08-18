@@ -11,7 +11,7 @@ enum Value {
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let end = input.iter().skip(start).position(|c| c == ' ' || c == ')');
 	let pos = match end {
-		Some(end) => end+1,
+		Some(end) => start+end,
 		None => input.len()
 	};
 	let acc = input.slice(start, pos);
@@ -39,7 +39,6 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 fn read_atom(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let atom = std::str::from_chars(input.iter().skip(start).take_while(|&c| c != ' ' && c != ')').to_owned_vec());
 	let len = atom.len();
-	printfln!("atom: %s | %u", atom, len);
 	Some((~Atom(atom), start + len))
 }
 
@@ -82,4 +81,12 @@ fn test_sexp() {
 	assert_eq!(parse("(1)"), Some(List(~[Num(1.0)])));
 	assert_eq!(parse("(hi there)"), Some(List(~[Atom(~"hi"), Atom(~"there")])));
 	assert_eq!(parse("(hi (there))"), Some(List(~[Atom(~"hi"), List(~[Atom(~"there")])])));
+	assert_eq!(parse("(hi 123456)"), Some(List(~[Atom(~"hi"), Num(123456.0)])));
+	assert_eq!(parse("(())"), Some(List(~[List(~[])])));
+	assert_eq!(parse("(hi (there (fellow (human-bot!))))"), Some(
+		List(~[Atom(~"hi"),
+			List(~[Atom(~"there"),
+				List(~[Atom(~"fellow"),
+					List(~[Atom(~"human-bot!")])])])])
+	));
 }
