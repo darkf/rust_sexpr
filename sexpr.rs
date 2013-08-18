@@ -8,6 +8,10 @@ enum Value {
 	Num(float)
 }
 
+fn read_nows(input: &str, start: uint) -> Option<char> {
+	input.iter().skip(start).skip_while(|&c| c == ' ' || c == '\t').next()
+}
+
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let end = input.iter().skip(start).position(|c| c == ' ' || c == ')');
 	let pos = match end {
@@ -30,7 +34,7 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 				list.push(*v);
 				i = new_i;
 			}
-			None if input[i] as char == ')' => return Some((~List(list), i)),
+			None if read_nows(input, i) == Some(')') => return Some((~List(list), i)),
 			None => return None
 		}
 	}
@@ -76,10 +80,12 @@ fn test_sexp() {
 	assert_eq!(parse("3.14159265358"), Some(Num(3.14159265358)));
 	assert_eq!(parse("(hi)"), Some(List(~[Atom(~"hi")])));
 	assert_eq!(parse("(1)"), Some(List(~[Num(1.0)])));
+	assert_eq!(parse("  (  1  )  "), Some(List(~[Num(1.0)])));
 	assert_eq!(parse("(hi there)"), Some(List(~[Atom(~"hi"), Atom(~"there")])));
 	assert_eq!(parse("(hi (there))"), Some(List(~[Atom(~"hi"), List(~[Atom(~"there")])])));
 	assert_eq!(parse("(hi 123456)"), Some(List(~[Atom(~"hi"), Num(123456.0)])));
 	assert_eq!(parse("(())"), Some(List(~[List(~[])])));
+	assert_eq!(parse("  (  (  )  )  )"), Some(List(~[List(~[])])));
 	assert_eq!(parse("(hi (there (fellow (human-bot!))))"), Some(
 		List(~[Atom(~"hi"),
 			List(~[Atom(~"there"),
