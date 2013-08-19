@@ -1,17 +1,23 @@
 #[deriving(Eq)]
-enum Value {
+#[deriving(Clone)]
+pub enum Value {
 	List(~[Value]),
 	Atom(~str),
 	Str(~str),
 	Num(float)
 }
 
+#[inline]
+fn isws(c: char) -> bool {
+	c == ' ' || c == '\t' || c == '\n'
+}
+
 fn read_nows(input: &str, start: uint) -> Option<char> {
-	input.iter().skip(start).skip_while(|&c| c == ' ' || c == '\t').next()
+	input.iter().skip(start).skip_while(|&c| isws(c)).next()
 }
 
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
-	let end = input.iter().skip(start).position(|c| c == ' ' || c == ')');
+	let end = input.iter().skip(start).position(|c| isws(c) || c == ')');
 	let pos = match end {
 		Some(end) => start+end,
 		None => input.len()
@@ -39,7 +45,7 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 }
 
 fn read_atom(input: &str, start: uint) -> Option<(~Value, uint)> {
-	let atom = std::str::from_chars(input.iter().skip(start).take_while(|&c| c != ' ' && c != ')').to_owned_vec());
+	let atom = std::str::from_chars(input.iter().skip(start).take_while(|&c| !isws(c) && c != ')').to_owned_vec());
 	let len = atom.len();
 	Some((~Atom(atom), start + len))
 }
@@ -50,7 +56,7 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 	}
 
 	match input[start] as char {
-		' ' => read_value(input, start+1),
+		c if isws(c) => read_value(input, start+1), // ignore whitespace
 		'(' => read_list(input, start+1),
 		')' => None,
 		c if c.is_digit() || c == '.' => read_number(input, start),
