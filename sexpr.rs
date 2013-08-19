@@ -65,17 +65,13 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 }
 
 pub fn parse(input: &str) -> Option<Value> {
-	/*do io::with_str_reader(input) |r| {
-		//let c = 
-		println("blah: " + input + " -> " + read_token(r));
-		List(~[])
-	}*/
 	match read_value(input, 0) {
 		Some((v,_)) => Some(*v),
 		None => None
 	}
 }
 
+#[cfg(test)]
 mod test {
 	use super::{parse, Value, Num, List, Atom};
 
