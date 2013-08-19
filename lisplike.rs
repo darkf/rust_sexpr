@@ -88,8 +88,8 @@ fn car_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 
 fn cdr_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	match v[0] {
-		~List(ref v_) => {
-			~List(v_.slice(1, v_.len()).to_owned())
+		~List(v_) => {
+			~v_[1]
 		}
 		_ => fail!("cdr: need a list")
 	}
@@ -184,5 +184,20 @@ mod test {
 		assert_eq!(eval(symt, read("(cons 1 2)")), ~List(~[Num(1.0), Num(2.0)]));
 		assert_eq!(eval(symt, read("(cons 1 (cons 2 3))")), ~List(~[Num(1.0), 
 			List(~[Num(2.0), Num(3.0)])]));
+	}
+
+	#[test]
+	fn test_car() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(car (cons 1 2))")), ~Num(1.0));
+	}
+
+	#[test]
+	fn test_cdr() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(cdr (cons 1 2))")), ~Num(2.0));
+		assert_eq!(eval(symt, read("(cdr (cons 1 (cons 2 3)))")), ~List(~[Num(2.0), Num(3.0)]));
 	}
 }
