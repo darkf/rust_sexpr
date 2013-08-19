@@ -173,6 +173,7 @@ mod test {
 		init_std(symt);
 		assert_eq!(eval(symt, read("123")), ~Num(123.0));
 		assert_eq!(eval(symt, read("(id 123)")), ~Num(123.0));
+		assert_eq!(eval(symt, read("(id (id (id 123)))")), ~Num(123.0));
 		// should fail: assert_eq!(eval(&mut symt, read("(1 2 3)")), ~List(~[Num(1.0), Num(2.0), Num(3.0)]));
 	}
 
