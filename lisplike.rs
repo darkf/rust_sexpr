@@ -73,6 +73,28 @@ pub fn lookup(symt: @mut SymbolTable, name: ~str) -> ~LispValue {
 /// Identity function
 fn id_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { v[0] }
 
+fn cons_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	~List(~[*v[0].clone(), *v[1].clone()])
+}
+
+fn car_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	match v[0] {
+		~List(v_) => {
+			~v_[0]
+		}
+		_ => fail!("car: need a list")
+	}
+}
+
+fn cdr_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	match v[0] {
+		~List(ref v_) => {
+			~List(v_.slice(1, v_.len()).to_owned())
+		}
+		_ => fail!("cdr: need a list")
+	}
+}
+
 // Print function
 fn print_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	match v[0] {
@@ -86,6 +108,9 @@ fn print_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", ~[~"x"], id_));
 	bind(symt, ~"print", ~BIF(~"print", ~[~"msg"], print_));
+	bind(symt, ~"cons", ~BIF(~"cons", ~[~"x", ~"y"], cons_));
+	bind(symt, ~"car", ~BIF(~"car", ~[~"x"], car_));
+	bind(symt, ~"cdr", ~BIF(~"cdr", ~[~"x"], cdr_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -149,5 +174,14 @@ mod test {
 		assert_eq!(eval(symt, read("123")), ~Num(123.0));
 		assert_eq!(eval(symt, read("(id 123)")), ~Num(123.0));
 		// should fail: assert_eq!(eval(&mut symt, read("(1 2 3)")), ~List(~[Num(1.0), Num(2.0), Num(3.0)]));
+	}
+
+	#[test]
+	fn test_cons() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(cons 1 2)")), ~List(~[Num(1.0), Num(2.0)]));
+		assert_eq!(eval(symt, read("(cons 1 (cons 2 3))")), ~List(~[Num(1.0), 
+			List(~[Num(2.0), Num(3.0)])]));
 	}
 }
