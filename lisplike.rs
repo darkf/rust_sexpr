@@ -69,7 +69,19 @@ pub fn init_std(symt: &mut SymbolTable) {
 }
 
 fn apply(symt: &mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
-	fail!("stub: apply")
+	match *f {
+		BIF(name, fnargs, bif) => {
+			// apply built-in function
+			if fnargs.len() != args.len() {
+				fail!("function '%s' requires %u arguments, but it received %u arguments",
+					name, fnargs.len(), args.len())
+			}
+
+			bif(args)
+		}
+
+		_ => fail!("apply: need function")
+	}
 }
 
 /// Evaluates an s-expression and returns a value.
