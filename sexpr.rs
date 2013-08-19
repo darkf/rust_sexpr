@@ -58,7 +58,7 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 	}
 }
 
-fn parse(input: &str) -> Option<Value> {
+pub fn parse(input: &str) -> Option<Value> {
 	/*do io::with_str_reader(input) |r| {
 		//let c = 
 		println("blah: " + input + " -> " + read_token(r));
@@ -70,24 +70,49 @@ fn parse(input: &str) -> Option<Value> {
 	}
 }
 
-#[test]
-fn test_sexpr() {
-	assert_eq!(parse(""), None);
-	assert_eq!(parse("123"), Some(Num(123.0)));
-	assert_eq!(parse("()"), Some(List(~[])));
-	assert_eq!(parse("3.14159265358"), Some(Num(3.14159265358)));
-	assert_eq!(parse("(hi)"), Some(List(~[Atom(~"hi")])));
-	assert_eq!(parse("(1)"), Some(List(~[Num(1.0)])));
-	assert_eq!(parse("  (  1  )  "), Some(List(~[Num(1.0)])));
-	assert_eq!(parse("(hi there)"), Some(List(~[Atom(~"hi"), Atom(~"there")])));
-	assert_eq!(parse("(hi (there))"), Some(List(~[Atom(~"hi"), List(~[Atom(~"there")])])));
-	assert_eq!(parse("(hi 123456)"), Some(List(~[Atom(~"hi"), Num(123456.0)])));
-	assert_eq!(parse("(())"), Some(List(~[List(~[])])));
-	assert_eq!(parse("  (  (  )  )  )"), Some(List(~[List(~[])])));
-	assert_eq!(parse("(hi (there (fellow (human-bot!))))"), Some(
-		List(~[Atom(~"hi"),
-			List(~[Atom(~"there"),
-				List(~[Atom(~"fellow"),
-					List(~[Atom(~"human-bot!")])])])])
-	));
+mod test {
+	use super::{parse, Value, Num, List, Atom};
+
+	fn parse_some(input: &'static str, expr: Value) {
+		match parse(input) {
+			Some(ref p) if p == &expr => {}
+			Some(ref p) => {
+				if(p != &expr) {
+					fail!("Expected %?, not %?, for %?", expr, *p, input)
+				}
+			}
+			None => fail!("Got None for %?", input)
+		}
+	}
+
+	#[test]
+	fn test_sexpr() {
+		assert_eq!(parse(""), None);
+		parse_some("123", Num(123.0));
+		parse_some("()", List(~[]));
+		parse_some("3.14159265358", Num(3.14159265358));
+		parse_some("(hi)", List(~[Atom(~"hi")]));
+		parse_some("(1)", List(~[Num(1.0)]));
+		parse_some("(hi there)", List(~[Atom(~"hi"), Atom(~"there")]));
+		parse_some("(hi (there))", List(~[Atom(~"hi"), List(~[Atom(~"there")])]));
+		parse_some("(hi 123456)", List(~[Atom(~"hi"), Num(123456.0)]));
+		parse_some("(())", List(~[List(~[])]));
+		parse_some("(hi (there (fellow (human-bot!))))",
+			List(~[Atom(~"hi"),
+				List(~[Atom(~"there"),
+					List(~[Atom(~"fellow"),
+						List(~[Atom(~"human-bot!")])])])])
+		);
+	}
+
+	#[test]
+	fn test_whitespace() {
+		// spaces
+		parse_some("  (  1  )  ", List(~[Num(1.0)]));
+		parse_some("  (  (  )  )  )", List(~[List(~[])]));
+
+		// newlines
+		parse_some("\n\n( \n\n )\n\n", List(~[]));
+		parse_some("\n\n(\n\n123\n\n)\n\n", List(~[Num(123.0)]));
+	}
 }
