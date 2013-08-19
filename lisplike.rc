@@ -1,0 +1,5 @@
+#[link(name = "rust_sexpr", vers = "0.1", author = "darkf")];
+#[crate_type = "lib"];
+
+pub mod sexpr;
+pub mod lisplike;
