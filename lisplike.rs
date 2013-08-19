@@ -46,6 +46,12 @@ fn from_sexpr(sexpr: &sexpr::Value) -> ~LispValue {
 /// The type of the global symbol table (string to a value mapping).
 type SymbolTable = HashMap<~str, ~LispValue>;
 
+/// Returns a value representing the empty list
+#[inline]
+pub fn nil() -> ~LispValue {
+	~List(~[])
+}
+
 /// Creates a new symbol table and returns it
 pub fn new_symt() -> SymbolTable {
 	HashMap::new()
@@ -64,11 +70,22 @@ pub fn lookup(symt: @mut SymbolTable, name: ~str) -> ~LispValue {
 	}
 }
 
+/// Identity function
 fn id_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { v[0] }
+
+// Print function
+fn print_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	match v[0] {
+		~Str(s) => printfln!("%s", s),
+		_ => fail!("print takes an str")
+	}
+	nil()
+}
 
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", ~[~"x"], id_));
+	bind(symt, ~"print", ~BIF(~"print", ~[~"msg"], print_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
