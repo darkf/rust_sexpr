@@ -1,3 +1,5 @@
+extern mod std;
+
 #[deriving(Eq)]
 #[deriving(Clone)]
 pub enum Value {
@@ -64,7 +66,7 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 	}
 }
 
-pub fn parse(input: &str) -> Option<Value> {
+pub fn from_str(input: &str) -> Option<Value> {
 	match read_value(input, 0) {
 		Some((v,_)) => Some(*v),
 		None => None
@@ -73,10 +75,10 @@ pub fn parse(input: &str) -> Option<Value> {
 
 #[cfg(test)]
 mod test {
-	use super::{parse, Value, Num, List, Atom};
+	use super::*;
 
-	fn parse_some(input: &'static str, expr: Value) {
-		match parse(input) {
+	fn parse_some(input: &str, expr: Value) {
+		match from_str(input) {
 			Some(ref p) if p == &expr => {}
 			Some(ref p) => {
 				if(p != &expr) {
@@ -89,7 +91,7 @@ mod test {
 
 	#[test]
 	fn test_sexpr() {
-		assert_eq!(parse(""), None);
+		assert_eq!(from_str(""), None);
 		parse_some("123", Num(123.0));
 		parse_some("()", List(~[]));
 		parse_some("3.14159265358", Num(3.14159265358));
