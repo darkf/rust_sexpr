@@ -64,7 +64,7 @@ pub fn lookup(symt: @mut SymbolTable, name: ~str) -> ~LispValue {
 	}
 }
 
-fn id_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { symt.insert(~"hi", ~Num(6.0)); v[0] }
+fn id_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { v[0] }
 
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
