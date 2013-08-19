@@ -13,7 +13,10 @@ pub enum LispValue {
 	Str(~str),
 	Num(float),
 	Fn(~[~str], ~LispValue), // args, body
-	BIF(~str, ~[~str], extern fn(~[~LispValue])->~LispValue) // built-in function (args, closure)
+	// XXX: we need the symbol table to be a @-ptr
+	// otherwise we can't mutate it. &-ptrs give lifetime
+	// headaches, and ~-ptrs give move headaches.
+	BIF(~str, ~[~str], extern fn(@mut HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
 }
 
 // XXX: this is ugly but it won't automatically derive Eq because of the extern fn
@@ -49,26 +52,26 @@ pub fn new_symt() -> SymbolTable {
 }
 
 /// Binds a symbol in the symbol table. Replaces if it already exists.
-pub fn bind(symt: &mut SymbolTable, name: ~str, value: ~LispValue) {
+pub fn bind(symt: @mut SymbolTable, name: ~str, value: ~LispValue) {
 	symt.insert(name, value);
 }
 
 /// Look up a symbol in the symbol table. Fails if not found.
-pub fn lookup(symt: &SymbolTable, name: ~str) -> ~LispValue {
+pub fn lookup(symt: @mut SymbolTable, name: ~str) -> ~LispValue {
 	match symt.find(&name) {
 		Some(v) => v.clone(),
 		None => fail!("couldn't find symbol: %s", name)
 	}
 }
 
-fn id_(v: ~[~LispValue]) -> ~LispValue { v[0] }
+fn id_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { symt.insert(~"hi", ~Num(6.0)); v[0] }
 
 /// Initializes standard library functions
-pub fn init_std(symt: &mut SymbolTable) {
+pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", ~[~"x"], id_));
 }
 
-fn apply(symt: &mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
+fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
 	match *f {
 		BIF(name, fnargs, bif) => {
 			// apply built-in function
@@ -77,7 +80,7 @@ fn apply(symt: &mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispVal
 					name, fnargs.len(), args.len())
 			}
 
-			bif(args)
+			bif(symt, args)
 		}
 
 		_ => fail!("apply: need function")
@@ -85,7 +88,7 @@ fn apply(symt: &mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispVal
 }
 
 /// Evaluates an s-expression and returns a value.
-pub fn eval(symt: &mut SymbolTable, input: sexpr::Value) -> ~LispValue {
+pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 	match input {
 		sexpr::List(v) => {
 			if(v.len() == 0) {
@@ -124,10 +127,10 @@ mod test {
 
 	#[test]
 	fn test_eval() {
-		let mut symt = new_symt();
-		init_std(&mut symt);
-		assert_eq!(eval(&mut symt, read("123")), ~Num(123.0));
-		assert_eq!(eval(&mut symt, read("(id 123)")), ~Num(123.0));
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("123")), ~Num(123.0));
+		assert_eq!(eval(symt, read("(id 123)")), ~Num(123.0));
 		// should fail: assert_eq!(eval(&mut symt, read("(1 2 3)")), ~List(~[Num(1.0), Num(2.0), Num(3.0)]));
 	}
 }
