@@ -13,9 +13,6 @@ pub enum LispValue {
 	Str(~str),
 	Num(float),
 	Fn(~[~str], ~LispValue), // args, body
-	// XXX: we need the symbol table to be a @-ptr
-	// otherwise we can't mutate it. &-ptrs give lifetime
-	// headaches, and ~-ptrs give move headaches.
 	BIF(~str, ~[~str], extern fn(@mut HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
 }
 
@@ -74,23 +71,22 @@ pub fn lookup(symt: @mut SymbolTable, name: ~str) -> ~LispValue {
 fn id_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue { v[0] }
 
 fn cons_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
-	~List(~[*v[0].clone(), *v[1].clone()])
+	match v {
+		[~a, ~b, .._] => ~List(~[a, b]),
+		_ => fail!("cons: requires two arguments")
+	}
 }
 
 fn car_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	match v[0] {
-		~List(v_) => {
-			~v_[0]
-		}
+		~List(v_) => ~v_[0],
 		_ => fail!("car: need a list")
 	}
 }
 
 fn cdr_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	match v[0] {
-		~List(v_) => {
-			~v_[1]
-		}
+		~List(v_) => ~v_[1],
 		_ => fail!("cdr: need a list")
 	}
 }
@@ -137,15 +133,10 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 				fail!("eval given empty list")
 			}
 
-			// XXX: If we don't clone, the `match` partially moves v,
-			// so we can't use it in the match arms.
-			let v_ = v.clone();
-
 			// evaluate a list as a function call
-			match v[0] {
-				sexpr::Atom(sym) => {
+			match v {
+				[sexpr::Atom(sym), ..args] => {
 					let f = lookup(symt, sym);
-					let args = v_.slice(1, v_.len());
 					let xargs = args.map(|x| eval(symt, x.clone())); // eval'd args
 					apply(symt, f, xargs)
 				}
