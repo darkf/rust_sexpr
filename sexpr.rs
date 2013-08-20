@@ -14,10 +14,12 @@ fn isws(c: char) -> bool {
 	c == ' ' || c == '\t' || c == '\n'
 }
 
+/// Reads a character after skipping whitespace
 fn read_nows(input: &str, start: uint) -> Option<char> {
 	input.iter().skip(start).skip_while(|&c| isws(c)).next()
 }
 
+/// Reads a numeric literal (integers or floats)
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let end = input.iter().skip(start).position(|c| isws(c) || c == ')');
 	let pos = match end {
@@ -31,6 +33,35 @@ fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
 	}
 }
 
+/// Reads a string literal
+fn read_string(input: &str, start: uint) -> Option<(~Value, uint)> {
+	let mut acc = ~"";
+	let mut was_escape = false;
+	for i in range(start+1, input.len()) {
+		match(input[i] as char) {
+			'"' if !was_escape =>
+				return Some((~Str(acc), i+1)), // got closing quote
+			'\\' if !was_escape => {
+				// escape codes
+				was_escape = true;
+				match input[i+1] as char {
+					'\\' => acc.push_char('\\'),
+					'"' => acc.push_char('"'),
+					't' => acc.push_char('\t'),
+					'n' => acc.push_char('\n'),
+					c => fail!("unknown escape code: \\%c", c)
+				}
+			}
+			c if !was_escape => acc.push_char(c),
+			_ => { was_escape = false }
+		}
+	}
+
+	// we didn't hit the end " so there must be a parse error
+	None
+}
+
+/// Reads a list
 fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let mut list = ~[];
 	let mut i = start;
@@ -46,12 +77,14 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 	}
 }
 
+/// Reads an atom (symbol/identifier)
 fn read_atom(input: &str, start: uint) -> Option<(~Value, uint)> {
 	let atom = std::str::from_chars(input.iter().skip(start).take_while(|&c| !isws(c) && c != ')').to_owned_vec());
 	let len = atom.len();
 	Some((~Atom(atom), start + len))
 }
 
+/// Reads any S-expression value
 fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 	if(start >= input.len()) {
 		return None
@@ -61,11 +94,13 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 		c if isws(c) => read_value(input, start+1), // ignore whitespace
 		'(' => read_list(input, start+1),
 		')' => None,
+		'"' => read_string(input, start),
 		c if c.is_digit() || c == '.' => read_number(input, start),
 		_ => read_atom(input, start)
 	}
 }
 
+/// Public function for parsing a value from a string
 pub fn from_str(input: &str) -> Option<Value> {
 	match read_value(input, 0) {
 		Some((v,_)) => Some(*v),
@@ -107,6 +142,15 @@ mod test {
 					List(~[Atom(~"fellow"),
 						List(~[Atom(~"human-bot!")])])])])
 		);
+	}
+
+	#[test]
+	fn test_string() {
+		parse_some("\"\"", Str(~""));
+		parse_some("\"string\"", Str(~"string"));
+		parse_some("\"hi\tthere\n\"", Str(~"hi\tthere\n"));
+		parse_some("\"a\\\\b\"", Str(~"a\\b"));
+		parse_some("(\"hello\" \"world\")", List(~[Str(~"hello"), Str(~"world")]));
 	}
 
 	#[test]
