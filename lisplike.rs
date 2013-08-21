@@ -169,6 +169,14 @@ mod test {
 	}
 
 	#[test]
+	fn test_str() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(id \"hi\")")), ~Str(~"hi"));
+		assert_eq!(eval(symt, read("(car (cons \"a\" \"b\"))")), ~Str(~"a"));
+	}
+
+	#[test]
 	fn test_cons() {
 		let symt = @mut new_symt();
 		init_std(symt);
