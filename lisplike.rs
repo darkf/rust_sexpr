@@ -104,8 +104,6 @@ fn print_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 // that prevent us from making these functions macros. In addition, we can't
 // return a closure because the type needs to be `extern "Rust" fn`, which
 // closures aren't. So we have a little bit of code duplication.
-//
-// So later, we'll just implement `-` and `/` in terms of `+` and `*`.
 
 fn plus_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	if(v.len() == 0) { fail!("+ needs operands"); }
@@ -124,21 +122,54 @@ fn plus_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	v.iter().skip(1).fold(v[0].clone(), add)
 }
 
-fn mul_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
-	if(v.len() == 0) { fail!("+ needs operands"); }
+fn minus_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	if(v.len() == 0) { fail!("- needs operands"); }
 	else if(v.len() == 1) {
 		return v[0];
 	}
 
-	let add = |acc: ~LispValue, b: &~LispValue| {
+	let sub = |acc: ~LispValue, b: &~LispValue| {
 		match (*acc, b) {
-			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() * y.clone()),
-			_ => fail!("invalid operands to +")
+			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() - y.clone()),
+			_ => fail!("invalid operands to -")
 		}
 	};
 
-	v.iter().skip(1).fold(v[0].clone(), add)
+	v.iter().skip(1).fold(v[0].clone(), sub)
 }
+
+fn mul_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	if(v.len() == 0) { fail!("* needs operands"); }
+	else if(v.len() == 1) {
+		return v[0];
+	}
+
+	let mul = |acc: ~LispValue, b: &~LispValue| {
+		match (*acc, b) {
+			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() * y.clone()),
+			_ => fail!("invalid operands to *")
+		}
+	};
+
+	v.iter().skip(1).fold(v[0].clone(), mul)
+}
+
+fn div_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	if(v.len() == 0) { fail!("/ needs operands"); }
+	else if(v.len() == 1) {
+		return v[0];
+	}
+
+	let div = |acc: ~LispValue, b: &~LispValue| {
+		match (*acc, b) {
+			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() / y.clone()),
+			_ => fail!("invalid operands to /")
+		}
+	};
+
+	v.iter().skip(1).fold(v[0].clone(), div)
+}
+
 
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
@@ -149,6 +180,8 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"cdr", ~BIF(~"cdr", ~[~"x"], cdr_));
 	bind(symt, ~"+", ~BIF(~"+", ~[~"x"], plus_));
 	bind(symt, ~"*", ~BIF(~"*", ~[~"x"], mul_));
+	bind(symt, ~"-", ~BIF(~"-", ~[~"x"], minus_));
+	bind(symt, ~"/", ~BIF(~"/", ~[~"x"], div_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -253,5 +286,11 @@ mod test {
 		assert_eq!(eval(symt, read("(- 5 3)")), ~Num(2.0));
 		assert_eq!(eval(symt, read("(- 3 5)")), ~Num(-2.0));
 		assert_eq!(eval(symt, read("(- 5 -3)")), ~Num(8.0));
+
+		assert_eq!(eval(symt, read("(* 2 5)")), ~Num(10.0));
+		assert_eq!(eval(symt, read("(* 2 -5)")), ~Num(-10.0));
+
+		assert_eq!(eval(symt, read("(/ 10 2)")), ~Num(5.0));
+		assert_eq!(eval(symt, read("(/ 10 -2)")), ~Num(-5.0));
 	}
 }
