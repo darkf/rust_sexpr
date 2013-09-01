@@ -100,6 +100,46 @@ fn print_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	nil()
 }
 
+// There are several bugs in the macroing system (#8853, or, #8852 and #8851)
+// that prevent us from making these functions macros. In addition, we can't
+// return a closure because the type needs to be `extern "Rust" fn`, which
+// closures aren't. So we have a little bit of code duplication.
+//
+// So later, we'll just implement `-` and `/` in terms of `+` and `*`.
+
+fn plus_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	if(v.len() == 0) { fail!("+ needs operands"); }
+	else if(v.len() == 1) {
+		return v[0];
+	}
+
+	let add = |acc: ~LispValue, b: &~LispValue| {
+		match (*acc, b) {
+			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() + y.clone()),
+			(Str(ref x), &~Str(ref y)) => ~Str(x.clone() + y.clone()),
+			_ => fail!("invalid operands to +")
+		}
+	};
+
+	v.iter().skip(1).fold(v[0].clone(), add)
+}
+
+fn mul_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	if(v.len() == 0) { fail!("+ needs operands"); }
+	else if(v.len() == 1) {
+		return v[0];
+	}
+
+	let add = |acc: ~LispValue, b: &~LispValue| {
+		match (*acc, b) {
+			(Num(ref x), &~Num(ref y)) => ~Num(x.clone() * y.clone()),
+			_ => fail!("invalid operands to +")
+		}
+	};
+
+	v.iter().skip(1).fold(v[0].clone(), add)
+}
+
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", ~[~"x"], id_));
@@ -107,6 +147,8 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"cons", ~BIF(~"cons", ~[~"x", ~"y"], cons_));
 	bind(symt, ~"car", ~BIF(~"car", ~[~"x"], car_));
 	bind(symt, ~"cdr", ~BIF(~"cdr", ~[~"x"], cdr_));
+	bind(symt, ~"+", ~BIF(~"+", ~[~"x"], plus_));
+	bind(symt, ~"*", ~BIF(~"*", ~[~"x"], mul_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -198,5 +240,18 @@ mod test {
 		init_std(symt);
 		assert_eq!(eval(symt, read("(cdr (cons 1 2))")), ~Num(2.0));
 		assert_eq!(eval(symt, read("(cdr (cons 1 (cons 2 3)))")), ~List(~[Num(2.0), Num(3.0)]));
+	}
+
+	#[test]
+	fn test_arithmetic() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(+ 1 3)")), ~Num(5.0));
+		assert_eq!(eval(symt, read("(+ 1.5 3)")), ~Num(4.5));
+		assert_eq!(eval(symt, read("(+ 5 -3)")), ~Num(2.0));
+
+		assert_eq!(eval(symt, read("(- 5 3)")), ~Num(2.0));
+		assert_eq!(eval(symt, read("(- 3 5)")), ~Num(-2.0));
+		assert_eq!(eval(symt, read("(- 5 -3)")), ~Num(8.0));
 	}
 }
