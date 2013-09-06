@@ -170,6 +170,17 @@ fn div_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	v.iter().skip(1).fold(v[0].clone(), div)
 }
 
+/// Binds a value to an identifier.
+fn def_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	match v {
+		[~Atom(ident), value] => {
+			bind(symt, ident, value);
+			nil()
+		}
+		_ => fail!("invalid arguments to def")
+	}
+}
+
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", 1, ~[~"x"], id_));
@@ -181,6 +192,7 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"*", ~BIF(~"*", -1, ~[], mul_));
 	bind(symt, ~"-", ~BIF(~"-", -1, ~[], minus_));
 	bind(symt, ~"/", ~BIF(~"/", -1, ~[], div_));
+	bind(symt, ~"def", ~BIF(~"def", 2, ~[~"ident", ~"value"], def_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -301,5 +313,13 @@ mod test {
 		assert_eq!(eval(symt, read("(quote 5)")), ~Num(5.0));
 		assert_eq!(eval(symt, read("(quote x)")), ~Atom(~"x"));
 		assert_eq!(eval(symt, read("(quote (1 2 3))")), ~List(~[Num(1f), Num(2f), Num(3f)]));
+	}
+
+	#[test]
+	fn test_def() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		eval(symt, read("(def x 5)"));
+		eval(symt, read("(def y 10)"));
 	}
 }
