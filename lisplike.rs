@@ -209,6 +209,7 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 
 			// evaluate a list as a function call
 			match v {
+				[sexpr::Atom(~"quote"), arg] => from_sexpr(&arg),
 				[sexpr::Atom(sym), ..args] => {
 					let f = lookup(symt, sym);
 					let xargs = args.map(|x| eval(symt, x.clone())); // eval'd args
@@ -291,5 +292,14 @@ mod test {
 
 		assert_eq!(eval(symt, read("(/ 10 2)")), ~Num(5.0));
 		assert_eq!(eval(symt, read("(/ 10 -2)")), ~Num(-5.0));
+	}
+
+	#[test]
+	fn test_quote() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(quote 5)")), ~Num(5.0));
+		assert_eq!(eval(symt, read("(quote x)")), ~Atom(~"x"));
+		assert_eq!(eval(symt, read("(quote (1 2 3))")), ~List(~[Num(1f), Num(2f), Num(3f)]));
 	}
 }
