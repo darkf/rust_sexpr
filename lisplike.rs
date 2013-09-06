@@ -13,14 +13,14 @@ pub enum LispValue {
 	Str(~str),
 	Num(float),
 	Fn(~[~str], ~LispValue), // args, body
-	BIF(~str, ~[~str], extern fn(@mut HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
+	BIF(~str, int, ~[~str], extern fn(@mut HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
 }
 
 // XXX: this is ugly but it won't automatically derive Eq because of the extern fn
 impl Eq for LispValue {
 	fn eq(&self, other: &LispValue) -> bool {
 		match (self.clone(), other.clone()) {
-			(BIF(ref x, _, _), BIF(ref y, _, _)) if *x == *y => true,
+			(BIF(ref x, _, _, _), BIF(ref y, _, _, _)) if *x == *y => true,
 			(Str(ref x), Str(ref y)) if *x == *y => true,
 			(Num(ref x), Num(ref y)) if *x == *y => true,
 			(Atom(ref x), Atom(ref y)) if *x == *y => true,
@@ -170,27 +170,26 @@ fn div_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	v.iter().skip(1).fold(v[0].clone(), div)
 }
 
-
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
-	bind(symt, ~"id", ~BIF(~"id", ~[~"x"], id_));
-	bind(symt, ~"print", ~BIF(~"print", ~[~"msg"], print_));
-	bind(symt, ~"cons", ~BIF(~"cons", ~[~"x", ~"y"], cons_));
-	bind(symt, ~"car", ~BIF(~"car", ~[~"x"], car_));
-	bind(symt, ~"cdr", ~BIF(~"cdr", ~[~"x"], cdr_));
-	bind(symt, ~"+", ~BIF(~"+", ~[~"x"], plus_));
-	bind(symt, ~"*", ~BIF(~"*", ~[~"x"], mul_));
-	bind(symt, ~"-", ~BIF(~"-", ~[~"x"], minus_));
-	bind(symt, ~"/", ~BIF(~"/", ~[~"x"], div_));
+	bind(symt, ~"id", ~BIF(~"id", 1, ~[~"x"], id_));
+	bind(symt, ~"print", ~BIF(~"print", 1, ~[~"msg"], print_));
+	bind(symt, ~"cons", ~BIF(~"cons", 2, ~[~"x", ~"y"], cons_));
+	bind(symt, ~"car", ~BIF(~"car", 1, ~[~"x"], car_));
+	bind(symt, ~"cdr", ~BIF(~"cdr", 1, ~[~"x"], cdr_));
+	bind(symt, ~"+", ~BIF(~"+", -1, ~[], plus_));
+	bind(symt, ~"*", ~BIF(~"*", -1, ~[], mul_));
+	bind(symt, ~"-", ~BIF(~"-", -1, ~[], minus_));
+	bind(symt, ~"/", ~BIF(~"/", -1, ~[], div_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
 	match *f {
-		BIF(name, fnargs, bif) => {
+		BIF(name, arity, fnargs, bif) => {
 			// apply built-in function
-			if fnargs.len() != args.len() {
-				fail!("function '%s' requires %u arguments, but it received %u arguments",
-					name, fnargs.len(), args.len())
+			if arity > 0 && fnargs.len() as int != arity {
+				fail!("function '%s' requires %d arguments, but it received %u arguments",
+					name, arity, args.len())
 			}
 
 			bif(symt, args)
@@ -279,7 +278,7 @@ mod test {
 	fn test_arithmetic() {
 		let symt = @mut new_symt();
 		init_std(symt);
-		assert_eq!(eval(symt, read("(+ 1 3)")), ~Num(5.0));
+		assert_eq!(eval(symt, read("(+ 1 3)")), ~Num(4.0));
 		assert_eq!(eval(symt, read("(+ 1.5 3)")), ~Num(4.5));
 		assert_eq!(eval(symt, read("(+ 5 -3)")), ~Num(2.0));
 
