@@ -14,6 +14,15 @@ fn isws(c: char) -> bool {
 	c == ' ' || c == '\t' || c == '\n'
 }
 
+/// Determines if the input begins a number
+#[inline]
+fn beginning_is_num(input: &str, i: uint) -> bool {
+	let (c, c2) = (input[i] as char, input[i+1] as char);
+	if c.is_digit() || c == '.' { true }
+	else if c == '-' && (c2.is_digit() || c2 == '.') { true }
+	else { false }
+}
+
 /// Reads a character after skipping whitespace
 fn read_nows(input: &str, start: uint) -> Option<char> {
 	input.iter().skip(start).skip_while(|&c| isws(c)).next()
@@ -95,7 +104,7 @@ fn read_value(input: &str, start: uint) -> Option<(~Value, uint)> {
 		'(' => read_list(input, start+1),
 		')' => None,
 		'"' => read_string(input, start),
-		c if c.is_digit() || c == '.' => read_number(input, start),
+		_ if beginning_is_num(input, start) => read_number(input, start),
 		_ => read_atom(input, start)
 	}
 }
@@ -128,9 +137,12 @@ mod test {
 	fn test_sexpr() {
 		assert_eq!(from_str(""), None);
 		parse_some("123", Num(123.0));
+		parse_some("-123", Num(-123.0));
 		parse_some("()", List(~[]));
 		parse_some("3.14159265358", Num(3.14159265358));
 		parse_some("(hi)", List(~[Atom(~"hi")]));
+		parse_some("(-hi)", List(~[Atom(~"-hi")]));
+		parse_some("(-)", List(~[Atom(~"-")]));
 		parse_some("(1)", List(~[Num(1.0)]));
 		parse_some("(hi there)", List(~[Atom(~"hi"), Atom(~"there")]));
 		parse_some("(hi (there))", List(~[Atom(~"hi"), List(~[Atom(~"there")])]));
