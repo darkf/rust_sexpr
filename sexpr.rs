@@ -24,8 +24,8 @@ fn beginning_is_num(input: &str, i: uint) -> bool {
 }
 
 /// Reads a character after skipping whitespace
-fn read_nows(input: &str, start: uint) -> Option<char> {
-	input.iter().skip(start).skip_while(|&c| isws(c)).next()
+fn read_nows(input: &str, start: uint) -> Option<(uint, char)> {
+	input.iter().enumerate().skip(start).skip_while(|&(_,c)| isws(c)).next()
 }
 
 /// Reads a numeric literal (integers or floats)
@@ -80,8 +80,13 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 				list.push(*v);
 				i = new_i;
 			}
-			None if read_nows(input, i) == Some(')') => return Some((~List(list), i)),
-			None => return None
+			None => {
+				// probably a terminating ')' - if so, return the list and seek past it
+				match read_nows(input, i) {
+					Some((new_i, ')')) => return Some((~List(list), new_i+1)),
+					_ => return None
+				}
+			}
 		}
 	}
 }
@@ -146,6 +151,8 @@ mod test {
 		parse_some("(1)", List(~[Num(1.0)]));
 		parse_some("(hi there)", List(~[Atom(~"hi"), Atom(~"there")]));
 		parse_some("(hi (there))", List(~[Atom(~"hi"), List(~[Atom(~"there")])]));
+		parse_some("(1 (2) 3)", List(~[Num(1f), List(~[Num(2f)]), Num(3f)]));
+		parse_some("(hi (there) you!)", List(~[Atom(~"hi"), List(~[Atom(~"there")]), Atom(~"you!")]));
 		parse_some("(hi 123456)", List(~[Atom(~"hi"), Num(123456.0)]));
 		parse_some("(())", List(~[List(~[])]));
 		parse_some("(hi (there (fellow (human-bot!))))",
