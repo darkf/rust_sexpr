@@ -177,7 +177,7 @@ fn def_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 			bind(symt, ident, value);
 			nil()
 		}
-		_ => fail!("invalid arguments to def")
+		v => fail!("invalid arguments to def")
 	}
 }
 
@@ -230,6 +230,10 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 				_ => fail!("function calls take an atom"),
 			}
 
+		}
+		sexpr::Atom(v) => {
+			// variable
+			lookup(symt, v)
 		}
 		_ => from_sexpr(&input) // return non-list values as they are
 	}
@@ -304,6 +308,14 @@ mod test {
 
 		assert_eq!(eval(symt, read("(/ 10 2)")), ~Num(5.0));
 		assert_eq!(eval(symt, read("(/ 10 -2)")), ~Num(-5.0));
+
+		assert_eq!(eval(symt, read("(+ 6 (+ 1 3))")), ~Num(10f));
+		assert_eq!(eval(symt, read("(- 6 (- 3 2))")), ~Num(5f));
+		
+		assert_eq!(eval(symt, read("(+ 1 (+ 2 3) 4)")), ~Num(10.0));
+
+		assert_eq!(eval(symt, read("(+ 5)")), ~Num(5.0));
+		assert_eq!(eval(symt, read("(+ -5)")), ~Num(-5.0));
 	}
 
 	#[test]
@@ -313,13 +325,20 @@ mod test {
 		assert_eq!(eval(symt, read("(quote 5)")), ~Num(5.0));
 		assert_eq!(eval(symt, read("(quote x)")), ~Atom(~"x"));
 		assert_eq!(eval(symt, read("(quote (1 2 3))")), ~List(~[Num(1f), Num(2f), Num(3f)]));
+		assert_eq!(eval(symt, read("(quote (quote x))")), ~List(~[Atom(~"quote"), Atom(~"x")]));
+		assert_eq!(eval(symt, read("(+ (quote 1) 2)")), ~Num(3f));
+
+		//assert_eq!(eval(symt, read("(quote 1 2 3 4 5)")), ~Num(5.0));
 	}
 
 	#[test]
 	fn test_def() {
 		let symt = @mut new_symt();
 		init_std(symt);
-		eval(symt, read("(def x 5)"));
-		eval(symt, read("(def y 10)"));
+		eval(symt, read("(def (quote x) 5)"));
+		eval(symt, read("(def (quote y) 10)"));
+		assert_eq!(eval(symt, read("x")), ~Num(5f));
+		assert_eq!(eval(symt, read("y")), ~Num(10f));
+		assert_eq!(eval(symt, read("(+ x y)")), ~Num(15f));
 	}
 }
