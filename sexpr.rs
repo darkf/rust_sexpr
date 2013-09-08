@@ -17,10 +17,16 @@ fn isws(c: char) -> bool {
 /// Determines if the input begins a number
 #[inline]
 fn beginning_is_num(input: &str, i: uint) -> bool {
-	let (c, c2) = (input[i] as char, input[i+1] as char);
-	if c.is_digit() || c == '.' { true }
-	else if c == '-' && (c2.is_digit() || c2 == '.') { true }
-	else { false }
+	let c = input[i] as char;
+	if c.is_digit() || c == '.' { return true }
+
+	if i+1 >= input.len() {
+		return false
+	}
+
+	let c2 = input[i+1] as char;
+	if c == '-' && (c2.is_digit() || c2 == '.') { return true }
+	else { return false }
 }
 
 /// Reads a character after skipping whitespace
@@ -143,11 +149,13 @@ mod test {
 		assert_eq!(from_str(""), None);
 		parse_some("123", Num(123.0));
 		parse_some("-123", Num(-123.0));
+		parse_some("1", Num(1f));
 		parse_some("()", List(~[]));
 		parse_some("3.14159265358", Num(3.14159265358));
 		parse_some("(hi)", List(~[Atom(~"hi")]));
 		parse_some("(-hi)", List(~[Atom(~"-hi")]));
 		parse_some("(-)", List(~[Atom(~"-")]));
+		parse_some("x", Atom(~"x"));
 		parse_some("(1)", List(~[Num(1.0)]));
 		parse_some("(hi there)", List(~[Atom(~"hi"), Atom(~"there")]));
 		parse_some("(hi (there))", List(~[Atom(~"hi"), List(~[Atom(~"there")])]));
