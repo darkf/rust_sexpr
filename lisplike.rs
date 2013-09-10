@@ -289,6 +289,10 @@ mod test {
 		init_std(symt);
 		assert_eq!(eval(symt, read("(id \"hi\")")), ~Str(~"hi"));
 		assert_eq!(eval(symt, read("(car (cons \"a\" \"b\"))")), ~Str(~"a"));
+
+		// string concatenation
+		assert_eq!(eval(symt, read("(+ \"hi\" \" there\")")), ~Str(~"hi there"));
+		assert_eq!(eval(symt, read("(+ \"hi\" \" there\" \" variadic\")")), ~Str(~"hi there variadic"));
 	}
 
 	#[test]
