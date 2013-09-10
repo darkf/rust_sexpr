@@ -12,7 +12,7 @@ pub enum LispValue {
 	Atom(~str),
 	Str(~str),
 	Num(float),
-	Fn(~[~str], ~LispValue), // args, body
+	Fn(~[~str], ~sexpr::Value), // args, body
 	BIF(~str, int, ~[~str], extern fn(@mut HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
 }
 
@@ -177,7 +177,7 @@ fn def_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 			bind(symt, ident, value);
 			nil()
 		}
-		v => fail!("invalid arguments to def")
+		_ => fail!("invalid arguments to def")
 	}
 }
 
@@ -207,6 +207,21 @@ fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispVal
 			bif(symt, args)
 		}
 
+		Fn(fnargs, body) => {
+			// apply a defined function
+			if args.len() != fnargs.len() {
+				fail!("function requires %u arguments, but it received %u arguments",
+					fnargs.len(), args.len())
+			}
+
+			// bind its arguments in the environemnt and evaluate its body
+			for (name,value) in fnargs.iter().zip(args.iter()) {
+				bind(symt, name.clone(), value.clone());
+			}
+
+			eval(symt, *body)
+		}
+
 		_ => fail!("apply: need function")
 	}
 }
@@ -222,6 +237,18 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 			// evaluate a list as a function call
 			match v {
 				[sexpr::Atom(~"quote"), arg] => from_sexpr(&arg),
+				[sexpr::Atom(~"defun"), sexpr::Atom(name), sexpr::List(args), body] => {
+					// define a function
+					let args_ = args.iter().map(|x| {
+						match x {
+							&sexpr::Atom(ref s) => s.clone(),
+							_ => fail!("defun: arguments need to be atoms")
+						}
+					}).collect();
+					let fn_ = ~Fn(args_, ~body);
+					bind(symt, name, fn_);
+					nil()
+				}
 				[sexpr::Atom(sym), ..args] => {
 					let f = lookup(symt, sym);
 					let xargs = args.map(|x| eval(symt, x.clone())); // eval'd args
@@ -340,5 +367,15 @@ mod test {
 		assert_eq!(eval(symt, read("x")), ~Num(5f));
 		assert_eq!(eval(symt, read("y")), ~Num(10f));
 		assert_eq!(eval(symt, read("(+ x y)")), ~Num(15f));
+	}
+
+	#[test]
+	fn test_defun() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		eval(symt, read("(defun f (x) (+ 1 x))"));
+		assert_eq!(eval(symt, read("f")), ~Fn(~[~"x"],
+			~sexpr::List(~[sexpr::Atom(~"+"), sexpr::Num(1f), sexpr::Atom(~"x")])));
+		assert_eq!(eval(symt, read("(f 5)")), ~Num(6f));
 	}
 }
