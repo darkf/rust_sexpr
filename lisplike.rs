@@ -210,7 +210,7 @@ fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispVal
 			eval(symt, *body)
 		}
 
-		_ => fail!("apply: need function")
+		v => fail!("apply: need function, received %?", v)
 	}
 }
 
@@ -246,12 +246,12 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 					}).collect();
 					~Fn(args_, ~body)
 				}
-				[sexpr::Atom(sym), ..args] => {
-					let f = lookup(symt, sym);
+				[ref fnval, ..args] => {
+					let f = eval(symt, fnval.clone());
 					let xargs = args.map(|x| eval(symt, x.clone())); // eval'd args
 					apply(symt, f, xargs)
 				}
-				_ => fail!("function calls take an atom"),
+				_ => fail!("eval: requires a variable or an application"),
 			}
 
 		}
@@ -377,5 +377,13 @@ mod test {
 		assert_eq!(eval(symt, read("f")), ~Fn(~[~"x"],
 			~sexpr::List(~[sexpr::Atom(~"+"), sexpr::Num(1f), sexpr::Atom(~"x")])));
 		assert_eq!(eval(symt, read("(f 5)")), ~Num(6f));
+	}
+
+	#[test]
+	fn test_apply_fn() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("((fn () 0))")), ~Num(0.0));
+		assert_eq!(eval(symt, read("((fn (x) x) 5)")), ~Num(5.0));
 	}
 }
