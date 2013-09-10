@@ -391,3 +391,32 @@ mod test {
 		assert_eq!(eval(symt, read("((fn (x) x) 5)")), ~Num(5.0));
 	}
 }
+
+#[ignore(test)]
+#[main]
+fn main() {
+	// A simple REPL
+	let stdin = std::io::stdin();
+	let mut symt = @mut new_symt();
+	init_std(symt);
+
+	loop {
+		print("> ");
+		let line = stdin.read_line();
+		match line {
+			~".q" => break,
+			~".newsym" => {
+				// use a fresh symbol table
+				symt = @mut new_symt();
+				init_std(symt);
+				println("ok");
+			}
+			_ => {
+				match sexpr::from_str(line) {
+					Some(sexpr) => printfln!("%?", eval(symt, sexpr)),
+					None => println("syntax error")
+				}
+			}
+		}
+	}
+}
