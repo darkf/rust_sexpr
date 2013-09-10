@@ -170,17 +170,6 @@ fn div_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	v.iter().skip(1).fold(v[0].clone(), div)
 }
 
-/// Binds a value to an identifier.
-fn def_(symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
-	match v {
-		[~Atom(ident), value] => {
-			bind(symt, ident, value);
-			nil()
-		}
-		_ => fail!("invalid arguments to def")
-	}
-}
-
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", 1, ~[~"x"], id_));
@@ -192,7 +181,6 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"*", ~BIF(~"*", -1, ~[], mul_));
 	bind(symt, ~"-", ~BIF(~"-", -1, ~[], minus_));
 	bind(symt, ~"/", ~BIF(~"/", -1, ~[], div_));
-	bind(symt, ~"def", ~BIF(~"def", 2, ~[~"ident", ~"value"], def_));
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -237,6 +225,17 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 			// evaluate a list as a function call
 			match v {
 				[sexpr::Atom(~"quote"), arg] => from_sexpr(&arg),
+				[sexpr::Atom(~"def"), name, value] => {
+					// bind a value to an identifier
+					let ident = match name {
+						sexpr::Atom(s) => s,
+						sexpr::Str(s) => s,
+						_ => fail!("def requires an atom or a string")
+					};
+
+					bind(symt, ident, eval(symt, value));
+					nil()
+				}
 				[sexpr::Atom(~"defun"), sexpr::Atom(name), sexpr::List(args), body] => {
 					// define a function
 					let args_ = args.iter().map(|x| {
@@ -362,8 +361,8 @@ mod test {
 	fn test_def() {
 		let symt = @mut new_symt();
 		init_std(symt);
-		eval(symt, read("(def (quote x) 5)"));
-		eval(symt, read("(def (quote y) 10)"));
+		eval(symt, read("(def x 5)"));
+		eval(symt, read("(def y 10)"));
 		assert_eq!(eval(symt, read("x")), ~Num(5f));
 		assert_eq!(eval(symt, read("y")), ~Num(10f));
 		assert_eq!(eval(symt, read("(+ x y)")), ~Num(15f));
