@@ -236,17 +236,15 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 					bind(symt, ident, eval(symt, value));
 					nil()
 				}
-				[sexpr::Atom(~"defun"), sexpr::Atom(name), sexpr::List(args), body] => {
-					// define a function
+				[sexpr::Atom(~"fn"), sexpr::List(args), body] => {
+					// construct a function
 					let args_ = args.iter().map(|x| {
 						match x {
 							&sexpr::Atom(ref s) => s.clone(),
-							_ => fail!("defun: arguments need to be atoms")
+							_ => fail!("fn: arguments need to be atoms")
 						}
 					}).collect();
-					let fn_ = ~Fn(args_, ~body);
-					bind(symt, name, fn_);
-					nil()
+					~Fn(args_, ~body)
 				}
 				[sexpr::Atom(sym), ..args] => {
 					let f = lookup(symt, sym);
@@ -369,10 +367,13 @@ mod test {
 	}
 
 	#[test]
-	fn test_defun() {
+	fn test_fn() {
 		let symt = @mut new_symt();
 		init_std(symt);
-		eval(symt, read("(defun f (x) (+ 1 x))"));
+		assert_eq!(eval(symt, read("(fn () ())")), ~Fn(~[], ~sexpr::List(~[])));
+		assert_eq!(eval(symt, read("(fn (x) (x))")), ~Fn(~[~"x"], ~sexpr::List(~[sexpr::Atom(~"x")])));
+
+		eval(symt, read("(def f (fn (x) (+ 1 x)))"));
 		assert_eq!(eval(symt, read("f")), ~Fn(~[~"x"],
 			~sexpr::List(~[sexpr::Atom(~"+"), sexpr::Num(1f), sexpr::Atom(~"x")])));
 		assert_eq!(eval(symt, read("(f 5)")), ~Num(6f));
