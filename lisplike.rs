@@ -1,5 +1,6 @@
 extern mod std;
 use std::hashmap::HashMap;
+use std::to_str::ToStr;
 use sexpr;
 
 // A very simple LISP-like language
@@ -27,6 +28,22 @@ impl Eq for LispValue {
 			(List(ref x), List(ref y)) if *x == *y => true,
 			(Fn(ref x, ref x2), Fn(ref y, ref y2)) if *x == *y && *x2 == *y2 => true,
 			_ => false
+		}
+	}
+}
+
+impl ToStr for LispValue {
+	fn to_str(&self) -> ~str {
+		match *self {
+			Atom(ref s) => s.clone(),
+			Str(ref s) => s.clone(),
+			Num(ref f) => f.to_str(),
+			Fn(ref args, _) => fmt!("<fn(%u)>", args.len()),
+			BIF(ref name, ref arity, _, _) => fmt!("<fn %s(%i)>", name.clone(), *arity),
+			List(ref v) => {
+				let values: ~[~str] = v.iter().map(|x: &LispValue| x.to_str()).collect();
+				fmt!("(%s)", values.connect(" "))
+			}
 		}
 	}
 }
@@ -413,7 +430,7 @@ fn main() {
 			}
 			_ => {
 				match sexpr::from_str(line) {
-					Some(sexpr) => printfln!("%?", eval(symt, sexpr)),
+					Some(sexpr) => println(eval(symt, sexpr).to_str()),
 					None => println("syntax error")
 				}
 			}
