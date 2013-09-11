@@ -473,6 +473,14 @@ mod test {
 
 		assert_eq!(eval(symt, read("(= (quote (1 2 3)) (quote (1 2 3)))")), ~Num(1f));
 	}
+
+	#[test]
+	fn test_factorial() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		eval(symt, read("(def fac (fn (n) (cond ((= n 0) 1) (true (* n (fac (- n 1)))))))"));
+		assert_eq!(eval(symt, read("(fac 10)")), ~Num(3628800f));
+	}
 }
 
 #[ignore(test)]
