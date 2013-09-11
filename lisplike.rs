@@ -198,6 +198,16 @@ fn div_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
 	v.iter().skip(1).fold(v[0].clone(), div)
 }
 
+fn equals_(_symt: @mut SymbolTable, v: ~[~LispValue]) -> ~LispValue {
+	match v {
+		[a, b] => {
+			if a == b { ~Num(1f) }
+			else { nil() }
+		}
+		_ => fail!("invalid operands to =")
+	}
+}
+
 /// Initializes standard library functions
 pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"id", ~BIF(~"id", 1, ~[~"x"], id_));
@@ -209,6 +219,8 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"*", ~BIF(~"*", -1, ~[], mul_));
 	bind(symt, ~"-", ~BIF(~"-", -1, ~[], minus_));
 	bind(symt, ~"/", ~BIF(~"/", -1, ~[], div_));
+	bind(symt, ~"=", ~BIF(~"=", 2, ~[~"x", ~"y"], equals_));
+
 	bind(symt, ~"true", ~Num(1f));
 	bind(symt, ~"nil", nil());
 }
@@ -442,6 +454,24 @@ mod test {
 		assert_eq!(eval(symt, read("(cond (true 2) (nil 3))")), ~Num(2f));
 		assert_eq!(eval(symt, read("(cond (nil 2) (true 3))")), ~Num(3f));
 		assert_eq!(eval(symt, read("(cond (nil 2) (true 3) (true 4))")), ~Num(3f));
+	}
+
+	#[test]
+	fn test_equals() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(= 1 1)")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= 1.0 1)")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= 1 2)")), nil());
+		assert_eq!(eval(symt, read("(= true 1)")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= nil (quote ()))")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= nil nil)")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= nil true)")), nil());
+
+		assert_eq!(eval(symt, read("(= \"a\" \"a\")")), ~Num(1f));
+		assert_eq!(eval(symt, read("(= \"a\" \"b\")")), nil());
+
+		assert_eq!(eval(symt, read("(= (quote (1 2 3)) (quote (1 2 3)))")), ~Num(1f));
 	}
 }
 
