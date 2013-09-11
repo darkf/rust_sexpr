@@ -32,6 +32,17 @@ impl Eq for LispValue {
 	}
 }
 
+impl LispValue {
+	/// Coerces this Lisp value to a native boolean. Empty lists (nil) are falsey,
+	/// everything else is truthy.
+	fn as_bool(&self) -> bool {
+		match *self {
+			List([]) => false, // nil
+			_ => true
+		}
+	}
+}
+
 impl ToStr for LispValue {
 	fn to_str(&self) -> ~str {
 		match *self {
@@ -198,6 +209,8 @@ pub fn init_std(symt: @mut SymbolTable) {
 	bind(symt, ~"*", ~BIF(~"*", -1, ~[], mul_));
 	bind(symt, ~"-", ~BIF(~"-", -1, ~[], minus_));
 	bind(symt, ~"/", ~BIF(~"/", -1, ~[], div_));
+	bind(symt, ~"true", ~Num(1f));
+	bind(symt, ~"nil", nil());
 }
 
 fn apply(symt: @mut SymbolTable, f: ~LispValue, args: ~[~LispValue]) -> ~LispValue {
@@ -251,6 +264,20 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 					};
 
 					bind(symt, ident, eval(symt, value));
+					nil()
+				},
+				[sexpr::Atom(~"cond"), ..conds] => {
+					//let conds = conds.iter().map(|x: &sexpr::Value| from_sexpr(x));
+					for cond in conds.iter() {
+						match *cond {
+							sexpr::List([ref c, ref e]) => {
+								if eval(symt, c.clone()).as_bool() {
+									return eval(symt, e.clone())
+								}
+							}
+							_ => fail!("cond: need list of (condition expression)")
+						}
+					}
 					nil()
 				}
 				[sexpr::Atom(~"fn"), sexpr::List(args), body] => {
@@ -406,6 +433,15 @@ mod test {
 		init_std(symt);
 		assert_eq!(eval(symt, read("((fn () 0))")), ~Num(0.0));
 		assert_eq!(eval(symt, read("((fn (x) x) 5)")), ~Num(5.0));
+	}
+
+	#[test]
+	fn test_cond() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(cond (true 2) (nil 3))")), ~Num(2f));
+		assert_eq!(eval(symt, read("(cond (nil 2) (true 3))")), ~Num(3f));
+		assert_eq!(eval(symt, read("(cond (nil 2) (true 3) (true 4))")), ~Num(3f));
 	}
 }
 
