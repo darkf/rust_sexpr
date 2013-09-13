@@ -68,6 +68,17 @@ fn from_sexpr(sexpr: &sexpr::Value) -> ~LispValue {
 	}
 }
 
+fn to_sexpr(value: &LispValue) -> sexpr::Value {
+	match *value {
+		Num(ref v) => sexpr::Num(v.clone()),
+		Str(ref s) => sexpr::Str(s.clone()),
+		Atom(ref s) => sexpr::Atom(s.clone()),
+		List(ref v) => sexpr::List(v.iter().map(to_sexpr).to_owned_vec()),
+		Fn(*) => fail!("can't convert fn to an s-expression"),
+		BIF(*) => fail!("can't convert BIF to an s-expression"),
+	}
+}
+
 /// The type of the global symbol table (string to a value mapping).
 type SymbolTable = HashMap<~str, ~LispValue>;
 
@@ -292,6 +303,13 @@ pub fn eval(symt: @mut SymbolTable, input: sexpr::Value) -> ~LispValue {
 					}
 					nil()
 				}
+				[sexpr::Atom(~"eval"), ..args] => {
+					// takes an argument, evaluates it (like a function does)
+					// and then uses that as an argument to eval().
+					// e.g. (= (eval (quote (+ 1 2))) 3)
+					assert!(args.len() == 1);
+					eval(symt, to_sexpr(eval(symt, args[0].clone())))
+				}
 				[sexpr::Atom(~"fn"), sexpr::List(args), body] => {
 					// construct a function
 					let args_ = args.iter().map(|x| {
@@ -409,6 +427,7 @@ mod test {
 		assert_eq!(eval(symt, read("(quote 5)")), ~Num(5.0));
 		assert_eq!(eval(symt, read("(quote x)")), ~Atom(~"x"));
 		assert_eq!(eval(symt, read("(quote (1 2 3))")), ~List(~[Num(1f), Num(2f), Num(3f)]));
+		assert_eq!(eval(symt, read("(quote (x y z))")), ~List(~[Atom(~"x"), Atom(~"y"), Atom(~"z")]))
 		assert_eq!(eval(symt, read("(quote (quote x))")), ~List(~[Atom(~"quote"), Atom(~"x")]));
 		assert_eq!(eval(symt, read("(+ (quote 1) 2)")), ~Num(3f));
 
@@ -480,6 +499,16 @@ mod test {
 		init_std(symt);
 		eval(symt, read("(def fac (fn (n) (cond ((= n 0) 1) (true (* n (fac (- n 1)))))))"));
 		assert_eq!(eval(symt, read("(fac 10)")), ~Num(3628800f));
+	}
+
+	#[test]
+	fn test_eval_fn() {
+		let symt = @mut new_symt();
+		init_std(symt);
+		assert_eq!(eval(symt, read("(eval 1)")), ~Num(1f));
+		assert_eq!(eval(symt, read("(eval \"hi\")")), ~Str(~"hi"));
+		assert_eq!(eval(symt, read("(eval (quote (+ 1 2)))")), ~Num(3f));
+		assert_eq!(eval(symt, read("(eval (quote ( (fn () 0) )))")), ~Num(0f));
 	}
 }
 
