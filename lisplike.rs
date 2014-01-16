@@ -1,7 +1,8 @@
 extern mod std;
 use std::hashmap::HashMap;
 use std::to_str::ToStr;
-use std::rc;
+use std::rc::Rc;
+use std::io::stdio::{print, println};
 use sexpr;
 
 // A very simple LISP-like language
@@ -13,9 +14,9 @@ pub enum LispValue {
 	List(~[LispValue]),
 	Atom(~str),
 	Str(~str),
-	Num(float),
+	Num(f64),
 	Fn(~[~str], ~sexpr::Value), // args, body
-	BIF(~str, int, ~[~str], fn(HashMap<~str, ~LispValue>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
+	BIF(~str, int, ~[~str], fn(Rc<HashMap<~str, ~LispValue>>, ~[~LispValue])->~LispValue) // built-in function (args, closure)
 }
 
 // XXX: this is ugly but it won't automatically derive Eq because of the extern fn
@@ -50,11 +51,11 @@ impl ToStr for LispValue {
 			Atom(ref s) => s.clone(),
 			Str(ref s) => s.clone(),
 			Num(ref f) => f.to_str(),
-			Fn(ref args, _) => fmt!("<fn(%u)>", args.len()),
-			BIF(ref name, ref arity, _, _) => fmt!("<fn %s(%i)>", name.clone(), *arity),
+			Fn(ref args, _) => format!("<fn({:u})>", args.len()),
+			BIF(ref name, ref arity, _, _) => format!("<fn {:s}({:i})>", name.clone(), *arity),
 			List(ref v) => {
 				let values: ~[~str] = v.iter().map(|x: &LispValue| x.to_str()).collect();
-				fmt!("(%s)", values.connect(" "))
+				format!("({:s})", values.connect(" "))
 			}
 		}
 	}
@@ -103,7 +104,7 @@ pub fn bind(symt: Rc<SymbolTable>, name: ~str, value: ~LispValue) {
 pub fn lookup(symt: Rc<SymbolTable>, name: ~str) -> ~LispValue {
 	match symt.find(&name) {
 		Some(v) => v.clone(),
-		None => fail!("couldn't find symbol: %s", name)
+		None => fail!("couldn't find symbol: {}", name)
 	}
 }
 
@@ -134,7 +135,7 @@ fn cdr_(_symt: Rc<SymbolTable>, v: ~[~LispValue]) -> ~LispValue {
 // Print function
 fn print_(_symt: Rc<SymbolTable>, v: ~[~LispValue]) -> ~LispValue {
 	match v[0] {
-		~Str(s) => printfln!("%s", s),
+		~Str(s) => println(s),
 		_ => fail!("print takes an str")
 	}
 	nil()
@@ -242,7 +243,7 @@ fn apply(symt: Rc<SymbolTable>, f: ~LispValue, args: ~[~LispValue]) -> ~LispValu
 		BIF(name, arity, fnargs, bif) => {
 			// apply built-in function
 			if arity > 0 && fnargs.len() as int != arity {
-				fail!("function '%s' requires %d arguments, but it received %u arguments",
+				fail!("function '{:s}' requires {:d} arguments, but it received {:u} arguments",
 					name, arity, args.len())
 			}
 
@@ -252,7 +253,7 @@ fn apply(symt: Rc<SymbolTable>, f: ~LispValue, args: ~[~LispValue]) -> ~LispValu
 		Fn(fnargs, body) => {
 			// apply a defined function
 			if args.len() != fnargs.len() {
-				fail!("function requires %u arguments, but it received %u arguments",
+				fail!("function requires {:u} arguments, but it received {:u} arguments",
 					fnargs.len(), args.len())
 			}
 
@@ -264,7 +265,7 @@ fn apply(symt: Rc<SymbolTable>, f: ~LispValue, args: ~[~LispValue]) -> ~LispValu
 			eval(symt, *body)
 		}
 
-		v => fail!("apply: need function, received %?", v)
+		v => fail!("apply: need function, received {}", v)
 	}
 }
 
@@ -340,9 +341,10 @@ pub fn eval(symt: Rc<SymbolTable>, input: sexpr::Value) -> ~LispValue {
 
 #[cfg(test)]
 mod test {
-	use super::{SymbolTable, eval};
+	use super::{SymbolTable, eval, init_std, new_symt, nil, Num, Str, Fn, List, Atom};
 	use sexpr;
 	use sexpr::from_str;
+	use std::rc::Rc;
 
 	fn read(input: &str) -> sexpr::Value {
 		from_str(input).unwrap()

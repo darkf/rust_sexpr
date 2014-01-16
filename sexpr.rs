@@ -6,7 +6,7 @@ pub enum Value {
 	List(~[Value]),
 	Atom(~str),
 	Str(~str),
-	Num(float)
+	Num(f64)
 }
 
 #[inline]
@@ -42,7 +42,7 @@ fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
 		None => input.len()
 	};
 	let acc = input.slice(start, pos);
-	match std::float::from_str(acc) {
+	match std::num::strconv::from_str_common(acc, 10, true, true, false, std::num::strconv::ExpDec, false, false) {
 		Some(f) => Some((~Num(f), pos)),
 		None => None
 	}
@@ -64,7 +64,7 @@ fn read_string(input: &str, start: uint) -> Option<(~Value, uint)> {
 					'"' => acc.push_char('"'),
 					't' => acc.push_char('\t'),
 					'n' => acc.push_char('\n'),
-					c => fail!("unknown escape code: \\%c", c)
+					c => fail!("unknown escape code: \\\\{:c}", c)
 				}
 			}
 			c if !was_escape => acc.push_char(c),
@@ -130,17 +130,18 @@ pub fn from_str(input: &str) -> Option<Value> {
 
 #[cfg(test)]
 mod test {
-	use super::from_str;
+	use super::{from_str, Num, List, Str, Atom, Value};
 
 	fn parse_some(input: &str, expr: Value) {
 		match from_str(input) {
 			Some(ref p) if p == &expr => {}
 			Some(ref p) => {
 				if(p != &expr) {
-					fail!("Expected %?, not %?, for %?", expr, *p, input)
+					//fail!("Expected {}, not {}, for {}", expr, *p, input)
+					fail!("");
 				}
 			}
-			None => fail!("Got None for %?", input)
+			None => fail!("Got None for {}", input)
 		}
 	}
 
