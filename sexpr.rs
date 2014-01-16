@@ -130,7 +130,7 @@ pub fn from_str(input: &str) -> Option<Value> {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+	use super::from_str;
 
 	fn parse_some(input: &str, expr: Value) {
 		match from_str(input) {
@@ -149,7 +149,7 @@ mod test {
 		assert_eq!(from_str(""), None);
 		parse_some("123", Num(123.0));
 		parse_some("-123", Num(-123.0));
-		parse_some("1", Num(1f));
+		parse_some("1", Num(1.0));
 		parse_some("()", List(~[]));
 		parse_some("3.14159265358", Num(3.14159265358));
 		parse_some("(hi)", List(~[Atom(~"hi")]));
@@ -159,7 +159,7 @@ mod test {
 		parse_some("(1)", List(~[Num(1.0)]));
 		parse_some("(hi there)", List(~[Atom(~"hi"), Atom(~"there")]));
 		parse_some("(hi (there))", List(~[Atom(~"hi"), List(~[Atom(~"there")])]));
-		parse_some("(1 (2) 3)", List(~[Num(1f), List(~[Num(2f)]), Num(3f)]));
+		parse_some("(1 (2) 3)", List(~[Num(1.0), List(~[Num(2.0)]), Num(3.0)]));
 		parse_some("(hi (there) you!)", List(~[Atom(~"hi"), List(~[Atom(~"there")]), Atom(~"you!")]));
 		parse_some("(hi 123456)", List(~[Atom(~"hi"), Num(123456.0)]));
 		parse_some("(())", List(~[List(~[])]));
