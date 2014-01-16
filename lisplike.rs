@@ -97,12 +97,12 @@ pub fn new_symt() -> SymbolTable {
 
 /// Binds a symbol in the symbol table. Replaces if it already exists.
 pub fn bind(symt: Rc<SymbolTable>, name: ~str, value: ~LispValue) {
-	symt.insert(name, value);
+	symt.borrow().insert(name, value);
 }
 
 /// Look up a symbol in the symbol table. Fails if not found.
 pub fn lookup(symt: Rc<SymbolTable>, name: ~str) -> ~LispValue {
-	match symt.find(&name) {
+	match symt.borrow().find(&name) {
 		Some(v) => v.clone(),
 		None => fail!("couldn't find symbol: {}", name)
 	}
@@ -265,7 +265,7 @@ fn apply(symt: Rc<SymbolTable>, f: ~LispValue, args: ~[~LispValue]) -> ~LispValu
 			eval(symt, *body)
 		}
 
-		v => fail!("apply: need function, received {}", v)
+		v => fail!("") //fail!("apply: need function, received {}", v)
 	}
 }
 
@@ -519,27 +519,28 @@ mod test {
 #[main]
 fn main() {
 	// A simple REPL
-	let stdin = std::io::stdin();
+	let mut stdinReader = std::io::buffered::BufferedReader::new(std::io::stdin());
 	let mut symt = Rc::new(new_symt());
 	init_std(symt);
 
 	loop {
 		print("> ");
-		let line = stdin.read_line();
+		let line = stdinReader.read_line();
 		match line {
-			~".q" => break,
-			~".newsym" => {
+			Some(~".q") => break,
+			Some(~".newsym") => {
 				// use a fresh symbol table
 				symt = Rc::new(new_symt());
 				init_std(symt);
 				println("ok");
 			}
-			_ => {
+			Some(line) => {
 				match sexpr::from_str(line) {
 					Some(sexpr) => println(eval(symt, sexpr).to_str()),
 					None => println("syntax error")
 				}
 			}
+			None => ()
 		}
 	}
 }

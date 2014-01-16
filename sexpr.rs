@@ -31,12 +31,12 @@ fn beginning_is_num(input: &str, i: uint) -> bool {
 
 /// Reads a character after skipping whitespace
 fn read_nows(input: &str, start: uint) -> Option<(uint, char)> {
-	input.iter().enumerate().skip(start).skip_while(|&(_,c)| isws(c)).next()
+	input.chars().enumerate().skip(start).skip_while(|&(_,c)| isws(c)).next()
 }
 
 /// Reads a numeric literal (integers or floats)
 fn read_number(input: &str, start: uint) -> Option<(~Value, uint)> {
-	let end = input.iter().skip(start).position(|c| isws(c) || c == ')');
+	let end = input.chars().skip(start).position(|c| isws(c) || c == ')');
 	let pos = match end {
 		Some(end) => start+end,
 		None => input.len()
@@ -99,7 +99,7 @@ fn read_list(input: &str, start: uint) -> Option<(~Value, uint)> {
 
 /// Reads an atom (symbol/identifier)
 fn read_atom(input: &str, start: uint) -> Option<(~Value, uint)> {
-	let atom = std::str::from_chars(input.iter().skip(start).take_while(|&c| !isws(c) && c != ')').to_owned_vec());
+	let atom = std::str::from_chars(input.chars().skip(start).take_while(|&c| !isws(c) && c != ')').to_owned_vec());
 	let len = atom.len();
 	Some((~Atom(atom), start + len))
 }
